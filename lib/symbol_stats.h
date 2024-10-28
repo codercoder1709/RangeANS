@@ -79,3 +79,4 @@ void SymbolStats::normaliseFrequency(uint32_t totalTarget)
         }
     }
 }
+
