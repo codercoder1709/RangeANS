@@ -64,7 +64,7 @@ void ransEncode(uint8_t *outputBuffer, size_t maxOutputSize, size_t inputSize, u
     printf("rANS: %d bytes\n", (int)(outputBuffer + maxOutputSize - rans_begin));
 }
 
-void ransDecode(uint8_t *rans_begin, size_t inputSize, uint8_t cummulativeFreq2Symbol[16384], const uint32_t prob_bits, uint8_t *decodingBytes, decoderSymbol decodingSymbols[256])
+void ransDecode(uint8_t *rans_begin, size_t inputSize, uint8_t cummulativeFreq2Symbol[16384], const uint32_t prob_bits, uint8_t *decodingBytes, decoderSymbol decodingSymbols[256],size_t maxOutputSize)
 {
     for (int run = 0; run < 5; run++)
     {
@@ -79,7 +79,7 @@ void ransDecode(uint8_t *rans_begin, size_t inputSize, uint8_t cummulativeFreq2S
         {
             uint32_t s = cummulativeFreq2Symbol[getCFforDecodingSymbol(&rans, prob_bits)];
             decodingBytes[i] = (uint8_t)s;
-            decoderWithSymbolTable(&rans, &ptr, &decodingSymbols[s], prob_bits);
+            decoderWithSymbolTable(&rans, &ptr, &decodingSymbols[s], prob_bits,rans_begin,maxOutputSize);
         }
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
@@ -103,7 +103,7 @@ void checkResults(uint8_t *inputArray, uint8_t *decodingBytes, size_t inputSize)
 int main()
 {
     size_t inputSize;
-    uint8_t *inputArray = readFile("../book1.tex", &inputSize);
+    uint8_t *inputArray = readFile("./book1.tex", &inputSize);
 
     static const uint32_t prob_bits = 14;
     static const uint32_t prob_scale = 1 << prob_bits;
@@ -136,7 +136,7 @@ int main()
     ransEncode(outputBuffer, maxOutputSize, inputSize, inputArray, encodingSymbols, rans_begin);
 
     // try rANS decode
-    ransDecode(rans_begin, inputSize, cummulativeFreq2Symbol, prob_bits, decodingBytes, decodingSymbols);
+    ransDecode(rans_begin, inputSize, cummulativeFreq2Symbol, prob_bits, decodingBytes, decodingSymbols,maxOutputSize);
 
     // check decode results
     checkResults(inputArray, decodingBytes, inputSize);
@@ -222,8 +222,8 @@ int main()
 
             RansDecAdvanceSymbolStep(&rans0, &decodingSymbols[s0], prob_bits);
             RansDecAdvanceSymbolStep(&rans1, &decodingSymbols[s1], prob_bits);
-            normaliseDecoder(&rans0, &ptr);
-            normaliseDecoder(&rans1, &ptr);
+            normaliseDecoder(&rans0, &ptr,rans_begin,maxOutputSize);
+            normaliseDecoder(&rans1, &ptr,rans_begin,maxOutputSize);
         }
 
         // Handle last byte if inputSize is odd
@@ -231,7 +231,7 @@ int main()
         {
             uint32_t s0 = cummulativeFreq2Symbol[getCFforDecodingSymbol(&rans0, prob_bits)];
             decodingBytes[inputSize - 1] = (uint8_t)s0;
-            decoderWithSymbolTable(&rans0, &ptr, &decodingSymbols[s0], prob_bits);
+            decoderWithSymbolTable(&rans0, &ptr, &decodingSymbols[s0], prob_bits,rans_begin,maxOutputSize);
         }
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;

@@ -76,14 +76,28 @@ static inline uint32_t getCFforDecodingSymbol(state *s, uint32_t scaleBits)
     return *s & ((1u << scaleBits) - 1);
 }
 
-static state normaliseDecoder(state *s, uint8_t **outputBuffer)
+static state normaliseDecoder(state *s, uint8_t **outputBuffer, uint8_t *outputBufferStart, size_t maxOutputSize)
 {
     state x = *s;
     if (x < lowerBound)
     {
         uint8_t *ptr = *outputBuffer;
-        do
-            x = (x << 8) | *ptr++;
+        do{
+            
+            x = (x << 8) | *ptr;
+            // Check if we've reached the end of the buffer
+            if (ptr >= outputBufferStart + maxOutputSize) {
+                // Reset to start of buffer
+                ptr = outputBufferStart;
+            }
+            else {
+                if (outputBufferStart + maxOutputSize == ptr - 1)
+                {
+                    printf("teri maa");
+                }
+                ptr+=2;
+            }
+        }
         while (x < lowerBound);
         *outputBuffer = ptr;
     }
@@ -91,13 +105,13 @@ static state normaliseDecoder(state *s, uint8_t **outputBuffer)
     return x; // return updated value of state
 }
 
-static void decoder(state *s, uint8_t **outputBuffer, uint32_t start, uint32_t frequency, uint32_t scaleBits)
+static void decoder(state *s, uint8_t **outputBuffer, uint32_t start, uint32_t frequency, uint32_t scaleBits,uint8_t *outputBufferStart, size_t maxOutputSize)
 {
     uint32_t mask = (1u << scaleBits) - 1;
     uint32_t x = *s; // copy state
 
     x = frequency * (x >> scaleBits) + (x & mask) - start; // decode x, no need to use complex maths like for encoding
-    *s = normaliseDecoder(&x, outputBuffer);               // first we calculate the new stat
+    *s = normaliseDecoder(&x, outputBuffer,outputBufferStart,maxOutputSize);               // first we calculate the new stat
 }
 
 typedef struct
@@ -168,9 +182,9 @@ static inline void getSymbolFromEncoder(state *s, uint8_t **outputBuffer, encode
 }
 
 // this function is used if symbol table is already present and we don't need to calculate the symbol on the fly
-static inline void decoderWithSymbolTable(state *s, uint8_t **outputBuffer, decoderSymbol const *sym, uint32_t scaleBits)
+static inline void decoderWithSymbolTable(state *s, uint8_t **outputBuffer, decoderSymbol const *sym, uint32_t scaleBits,uint8_t *outputBufferStart, size_t maxOutputSize)
 {
-    decoder(s, outputBuffer, sym->start, sym->frequency, scaleBits);
+    decoder(s, outputBuffer, sym->start, sym->frequency, scaleBits,outputBufferStart,maxOutputSize);
 }
 
 // this function is used if the symbol table is not availiable and we have to calculate the symbol
