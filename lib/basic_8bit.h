@@ -186,4 +186,16 @@ static inline void RansDecAdvanceSymbolStep(state *r, decoderSymbol const *sym, 
     decoderWithoutSymbolTable(r, sym->start, sym->frequency, scaleBits);
 }
 
+static inline void RansDecRenorm(state* r, uint8_t** outputBuffer)
+{
+    // renormalize
+    uint32_t x = *r;
+    if (x < lowerBound) {
+        uint8_t* ptr = *outputBuffer;
+        do x = (x << 8) | *ptr++; while (x < lowerBound);
+        *outputBuffer = ptr;
+    }
+    *r = x;
+}
+
 #endif
